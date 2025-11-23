@@ -13,14 +13,18 @@ export interface Item {
 
 interface ItemContextProps {
   items: Item[];
+  favorites: string[];
   addItem: (item: Omit<Item, 'id'>) => void;
   editItem: (item: Item) => void;
   deleteItem: (id: string) => void;
+  toggleFavorite: (id: string) => void;
+  isFavorite: (id: string) => boolean;
 }
 
 const ItemContext = createContext<ItemContextProps>({} as ItemContextProps);
 
 export const ItemProvider = ({ children }: { children: ReactNode }) => {
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [items, setItems] = useState<Item[]>([
     { 
       id: '1', 
@@ -59,10 +63,23 @@ export const ItemProvider = ({ children }: { children: ReactNode }) => {
     setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
   };
 
-  const deleteItem = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
+  const deleteItem = (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+    setFavorites(prev => prev.filter(favId => favId !== id));
+  };
+
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => 
+      prev.includes(id) 
+        ? prev.filter(favId => favId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const isFavorite = (id: string) => favorites.includes(id);
 
   return (
-    <ItemContext.Provider value={{ items, addItem, editItem, deleteItem }}>
+    <ItemContext.Provider value={{ items, favorites, addItem, editItem, deleteItem, toggleFavorite, isFavorite }}>
       {children}
     </ItemContext.Provider>
   );

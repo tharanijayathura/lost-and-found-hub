@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import Colors from '../constants/Colors';
+import { useTheme } from '../constants/ThemeContext';
 
 interface CustomButtonProps {
   title: string;
@@ -17,6 +17,8 @@ export default function CustomButton({
   loading = false,
   disabled = false 
 }: CustomButtonProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const isOutline = variant === 'outline';
   const isDanger = variant === 'danger';
   
@@ -29,7 +31,7 @@ export default function CustomButton({
         activeOpacity={0.7}
       >
         {loading ? (
-          <ActivityIndicator color={Colors.primary} />
+          <ActivityIndicator color={colors.primary} />
         ) : (
           <Text style={[styles.text, styles.outlineText]}>{title}</Text>
         )}
@@ -38,10 +40,10 @@ export default function CustomButton({
   }
 
   const gradientColors: [string, string] = isDanger 
-    ? [Colors.error, '#dc2626']
+    ? [colors.error, '#dc2626']
     : variant === 'secondary'
-    ? [Colors.secondary, '#7c3aed']
-    : [Colors.primary, Colors.primaryDark];
+    ? [colors.secondary, '#7c3aed']
+    : [colors.primary, colors.primaryDark];
 
   return (
     <TouchableOpacity
@@ -57,7 +59,7 @@ export default function CustomButton({
         style={[styles.button, disabled && styles.disabled]}
       >
         {loading ? (
-          <ActivityIndicator color={Colors.white} />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <Text style={styles.text}>{title}</Text>
         )}
@@ -66,7 +68,7 @@ export default function CustomButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   button: {
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -74,7 +76,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -83,16 +85,16 @@ const styles = StyleSheet.create({
   outlineButton: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
   },
   text: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
   },
   outlineText: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   disabled: {
     opacity: 0.5,

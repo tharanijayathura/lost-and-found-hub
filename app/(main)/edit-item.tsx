@@ -8,7 +8,7 @@ import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import { useItems } from '../../constants/context/ItemContext';
 import { Item } from '../../constants/context/ItemContext';
-import Colors from '../../constants/Colors';
+import { useTheme } from '../../constants/ThemeContext';
 
 const categories = ['Electronics', 'Personal Items', 'Clothing', 'Books', 'Accessories', 'Other'];
 
@@ -16,9 +16,11 @@ export default function EditItem() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { items, editItem } = useItems();
+  const { colors } = useTheme();
   const itemId = params.itemId as string;
   
   const item = items.find(i => i.id === itemId);
+  const styles = createStyles(colors);
   
   const [title, setTitle] = useState(item?.title || '');
   const [description, setDescription] = useState(item?.description || '');
@@ -98,7 +100,7 @@ export default function EditItem() {
         <View style={styles.header}>
           <Text style={styles.title}>Edit Item</Text>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color={Colors.text} />
+            <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -107,12 +109,12 @@ export default function EditItem() {
             <Image source={{ uri: imageUri }} style={styles.image} contentFit="cover" />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="camera-outline" size={48} color={Colors.gray} />
+              <Ionicons name="camera-outline" size={48} color={colors.gray} />
               <Text style={styles.imagePlaceholderText}>Tap to add photo</Text>
             </View>
           )}
           <View style={styles.imageOverlay}>
-            <Ionicons name="camera" size={24} color={Colors.white} />
+            <Ionicons name="camera" size={24} color={colors.white} />
           </View>
         </TouchableOpacity>
 
@@ -179,10 +181,10 @@ export default function EditItem() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     padding: 20,
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
   },
   closeButton: {
     padding: 4,
@@ -207,7 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 24,
     overflow: 'hidden',
-    backgroundColor: Colors.grayLight,
+    backgroundColor: colors.grayLight,
   },
   image: {
     width: '100%',
@@ -218,24 +220,24 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.grayLight,
+    backgroundColor: colors.grayLight,
   },
   imagePlaceholderText: {
     marginTop: 8,
     fontSize: 14,
-    color: Colors.gray,
+    color: colors.gray,
   },
   imageOverlay: {
     position: 'absolute',
     bottom: 12,
     right: 12,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     width: 48,
     height: 48,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -247,7 +249,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 12,
   },
   categoryGrid: {
@@ -259,21 +261,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: Colors.grayLight,
+    backgroundColor: colors.grayLight,
     borderWidth: 1.5,
-    borderColor: Colors.grayLight,
+    borderColor: colors.grayLight,
   },
   categoryChipActive: {
-    backgroundColor: Colors.primary + '15',
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary + '15',
+    borderColor: colors.primary,
   },
   categoryChipText: {
     fontSize: 14,
-    color: Colors.text,
+    color: colors.text,
     fontWeight: '500',
   },
   categoryChipTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '600',
   },
   errorContainer: {
@@ -284,7 +286,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: Colors.textLight,
+    color: colors.textLight,
     marginBottom: 20,
   },
 });

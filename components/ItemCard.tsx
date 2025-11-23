@@ -1,15 +1,21 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
+import { useTheme } from '../constants/ThemeContext';
 import { Item } from '../constants/context/ItemContext';
 
 interface ItemCardProps {
   item: Item;
   onPress?: () => void;
+  onFavoritePress?: () => void;
+  isFavorite?: boolean;
 }
 
-export default function ItemCard({ item, onPress }: ItemCardProps) {
+export default function ItemCard({ item, onPress, onFavoritePress, isFavorite = false }: ItemCardProps) {
+  const { colors } = useTheme();
+
+  const styles = createStyles(colors);
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -27,11 +33,29 @@ export default function ItemCard({ item, onPress }: ItemCardProps) {
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-          {item.category && (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.category}</Text>
-            </View>
-          )}
+          <View style={styles.headerRight}>
+            {item.category && (
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>{item.category}</Text>
+              </View>
+            )}
+            {onFavoritePress && (
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onFavoritePress();
+                }}
+                style={styles.favoriteButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons
+                  name={isFavorite ? "heart" : "heart-outline"}
+                  size={24}
+                  color={isFavorite ? colors.favorite : colors.textLight}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         
         {item.description && (
@@ -42,11 +66,11 @@ export default function ItemCard({ item, onPress }: ItemCardProps) {
         
         <View style={styles.footer}>
           <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={16} color={Colors.primary} />
+            <Ionicons name="location-outline" size={16} color={colors.primary} />
             <Text style={styles.location} numberOfLines={1}>{item.location}</Text>
           </View>
           <View style={styles.dateRow}>
-            <Ionicons name="calendar-outline" size={14} color={Colors.textLight} />
+            <Ionicons name="calendar-outline" size={14} color={colors.textLight} />
             <Text style={styles.date}>{item.date}</Text>
           </View>
         </View>
@@ -55,22 +79,24 @@ export default function ItemCard({ item, onPress }: ItemCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   card: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   image: {
     width: '100%',
     height: 200,
-    backgroundColor: Colors.grayLight,
+    backgroundColor: colors.grayLight,
   },
   content: {
     padding: 16,
@@ -81,15 +107,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
     marginRight: 8,
   },
   categoryBadge: {
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: colors.primary + '15',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -97,12 +128,15 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: 'uppercase',
+  },
+  favoriteButton: {
+    padding: 4,
   },
   description: {
     fontSize: 14,
-    color: Colors.textLight,
+    color: colors.textLight,
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -112,7 +146,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.grayLight,
+    borderTopColor: colors.border,
   },
   locationRow: {
     flexDirection: 'row',
@@ -121,7 +155,7 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 13,
-    color: Colors.textLight,
+    color: colors.textLight,
     marginLeft: 6,
     flex: 1,
   },
@@ -131,7 +165,7 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 12,
-    color: Colors.textLight,
+    color: colors.textLight,
     marginLeft: 4,
   },
 });

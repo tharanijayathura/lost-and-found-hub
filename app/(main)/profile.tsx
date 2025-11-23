@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, Switch } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,10 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import { useAuth } from '../../constants/context/AuthContext';
-import Colors from '../../constants/Colors';
+import { useTheme } from '../../constants/ThemeContext';
 
 export default function Profile() {
   const { user, logout, updateProfile } = useAuth();
+  const { theme, themeMode, colors, setThemeMode, toggleTheme } = useTheme();
   const router = useRouter();
   
   const [name, setName] = useState(user?.name || '');
@@ -20,6 +21,19 @@ export default function Profile() {
   const [studentId, setStudentId] = useState(user?.studentId || '');
   const [profileImageUri, setProfileImageUri] = useState<string | undefined>(user?.profileImageUri);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Update form fields when user data changes
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+      setStudentId(user.studentId || '');
+      setProfileImageUri(user.profileImageUri);
+    }
+  }, [user]);
+
+  const styles = createStyles(colors);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -80,14 +94,14 @@ export default function Profile() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={[Colors.primary, Colors.primaryDark]}
+          colors={[colors.primary, colors.primaryDark]}
           style={styles.header}
         >
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.white} />
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
         </LinearGradient>
@@ -102,12 +116,12 @@ export default function Profile() {
               />
             ) : (
               <View style={styles.profileImagePlaceholder}>
-                <Ionicons name="person" size={48} color={Colors.white} />
+                <Ionicons name="person" size={48} color={colors.white} />
               </View>
             )}
             {isEditing && (
               <View style={styles.editImageOverlay}>
-                <Ionicons name="camera" size={24} color={Colors.white} />
+                <Ionicons name="camera" size={24} color={colors.white} />
               </View>
             )}
           </TouchableOpacity>
@@ -122,7 +136,7 @@ export default function Profile() {
             <Ionicons 
               name={isEditing ? "close" : "create-outline"} 
               size={20} 
-              color={isEditing ? Colors.error : Colors.primary} 
+              color={isEditing ? colors.error : colors.primary} 
             />
             <Text style={[
               styles.editButtonText,
@@ -177,6 +191,90 @@ export default function Profile() {
           )}
         </View>
 
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsTitle}>Appearance</Text>
+          <View style={styles.settingItem}>
+            <View style={styles.settingLeft}>
+              <Ionicons name="moon-outline" size={24} color={colors.text} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>Dark Mode</Text>
+                <Text style={styles.settingDescription}>
+                  {themeMode === 'auto' 
+                    ? 'Following system settings' 
+                    : theme === 'dark' 
+                    ? 'Dark mode enabled' 
+                    : 'Light mode enabled'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={theme === 'dark'}
+              onValueChange={toggleTheme}
+              trackColor={{ false: colors.grayLight, true: colors.primary }}
+              thumbColor={colors.white}
+            />
+          </View>
+          <View style={styles.themeModeContainer}>
+            <TouchableOpacity
+              onPress={() => setThemeMode('light')}
+              style={[
+                styles.themeModeButton,
+                themeMode === 'light' && styles.themeModeButtonActive
+              ]}
+            >
+              <Ionicons 
+                name="sunny" 
+                size={20} 
+                color={themeMode === 'light' ? colors.white : colors.text} 
+              />
+              <Text style={[
+                styles.themeModeText,
+                themeMode === 'light' && styles.themeModeTextActive
+              ]}>
+                Light
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setThemeMode('dark')}
+              style={[
+                styles.themeModeButton,
+                themeMode === 'dark' && styles.themeModeButtonActive
+              ]}
+            >
+              <Ionicons 
+                name="moon" 
+                size={20} 
+                color={themeMode === 'dark' ? colors.white : colors.text} 
+              />
+              <Text style={[
+                styles.themeModeText,
+                themeMode === 'dark' && styles.themeModeTextActive
+              ]}>
+                Dark
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setThemeMode('auto')}
+              style={[
+                styles.themeModeButton,
+                themeMode === 'auto' && styles.themeModeButtonActive
+              ]}
+            >
+              <Ionicons 
+                name="phone-portrait" 
+                size={20} 
+                color={themeMode === 'auto' ? colors.white : colors.text} 
+              />
+              <Text style={[
+                styles.themeModeText,
+                themeMode === 'auto' && styles.themeModeTextActive
+              ]}>
+                Auto
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.logoutSection}>
           <CustomButton
             title="Logout"
@@ -189,10 +287,10 @@ export default function Profile() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -212,17 +310,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: Colors.white,
+    color: colors.white,
   },
   profileSection: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     marginTop: -20,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     marginBottom: 16,
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -237,17 +335,17 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 4,
-    borderColor: Colors.white,
+    borderColor: colors.white,
   },
   profileImagePlaceholder: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: Colors.white,
+    borderColor: colors.white,
   },
   editImageOverlay: {
     position: 'absolute',
@@ -256,21 +354,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: Colors.white,
+    borderColor: colors.white,
   },
   profileName: {
     fontSize: 24,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 14,
-    color: Colors.textLight,
+    color: colors.textLight,
     marginBottom: 20,
   },
   editButton: {
@@ -279,27 +377,99 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: Colors.grayLight,
+    backgroundColor: colors.grayLight,
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.primary,
+    color: colors.primary,
     marginLeft: 8,
   },
   editButtonTextDanger: {
-    color: Colors.error,
+    color: colors.error,
   },
   formSection: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  settingsSection: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  settingsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  settingTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 12,
+    color: colors.textLight,
+  },
+  themeModeContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  themeModeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: colors.grayLight,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  themeModeButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  themeModeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 6,
+  },
+  themeModeTextActive: {
+    color: colors.white,
   },
   logoutSection: {
     paddingHorizontal: 20,
@@ -313,7 +483,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: Colors.textLight,
+    color: colors.textLight,
     marginBottom: 24,
     textAlign: 'center',
   },

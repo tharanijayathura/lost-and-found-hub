@@ -1,37 +1,45 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Text, View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import { useAuth } from '../../constants/context/AuthContext';
-import Colors from '../../constants/Colors';
+import { useTheme } from '../../constants/ThemeContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { colors } = useTheme();
   const router = useRouter();
+  const styles = createStyles(colors);
 
   const handleLogin = async () => {
     if (!email || !password) return;
     
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      login(email, password);
+    try {
+      const success = await login(email, password);
+      if (success) {
+        router.replace('/home');
+      } else {
+        Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred during login. Please try again.');
+    } finally {
       setLoading(false);
-      router.replace('/home');
-    }, 500);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={[Colors.primary, Colors.primaryDark]}
+        colors={[colors.primary, colors.primaryDark]}
         style={styles.gradient}
       >
         <KeyboardAvoidingView
@@ -44,7 +52,7 @@ export default function Login() {
           >
             <View style={styles.header}>
               <View style={styles.iconContainer}>
-                <Ionicons name="search" size={48} color={Colors.white} />
+                <Ionicons name="search" size={48} color={colors.white} />
               </View>
               <Text style={styles.title}>Lost & Found</Text>
               <Text style={styles.subtitle}>University Hub</Text>
@@ -88,7 +96,7 @@ export default function Login() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -111,7 +119,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.white + '20',
+    backgroundColor: colors.white + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -119,19 +127,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: Colors.white,
+    color: colors.white,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.white + 'CC',
+    color: colors.white + 'CC',
     fontWeight: '500',
   },
   form: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
@@ -144,11 +152,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: Colors.textLight,
+    color: colors.textLight,
   },
   footerLink: {
     fontSize: 14,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '600',
   },
 });

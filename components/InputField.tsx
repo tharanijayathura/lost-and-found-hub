@@ -1,5 +1,5 @@
 import { TextInput, View, Text, StyleSheet } from 'react-native';
-import Colors from '../constants/Colors';
+import { useTheme } from '../constants/ThemeContext';
 
 interface InputFieldProps {
   value: string;
@@ -10,6 +10,8 @@ interface InputFieldProps {
   multiline?: boolean;
   numberOfLines?: number;
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  editable?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }
 
 export default function InputField({ 
@@ -20,8 +22,13 @@ export default function InputField({
   label,
   multiline = false,
   numberOfLines = 1,
-  keyboardType = 'default'
+  keyboardType = 'default',
+  editable = true,
+  autoCapitalize = 'sentences'
 }: InputFieldProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -29,43 +36,50 @@ export default function InputField({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={Colors.gray}
+        placeholderTextColor={colors.gray}
         secureTextEntry={secureTextEntry}
         multiline={multiline}
         numberOfLines={numberOfLines}
         keyboardType={keyboardType}
+        editable={editable}
+        autoCapitalize={autoCapitalize}
         style={[
           styles.input,
-          multiline && styles.multilineInput
+          multiline && styles.multilineInput,
+          !editable && styles.inputDisabled
         ]}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: Colors.grayLight,
+    borderColor: colors.border,
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
-    color: Colors.text,
-    backgroundColor: Colors.white,
-    shadowColor: Colors.shadow,
+    color: colors.text,
+    backgroundColor: colors.card,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  inputDisabled: {
+    backgroundColor: colors.grayLight,
+    opacity: 0.6,
   },
   multilineInput: {
     minHeight: 100,

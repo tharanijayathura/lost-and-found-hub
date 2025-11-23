@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../constants/context/AuthContext';
-import Colors from '../../constants/Colors';
+import { useTheme } from '../../constants/ThemeContext';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -17,24 +17,42 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { register } = useAuth();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
 
   const handleRegister = async () => {
-    if (!name || !email || !password) return;
-    if (password !== confirmPassword) return;
+    if (!name || !email || !password) {
+      Alert.alert('Required Fields', 'Please fill in all required fields.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match. Please try again.');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters long.');
+      return;
+    }
 
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      register(name, email, password);
+    try {
+      const success = await register(name, email, password);
+      if (success) {
+        router.replace('/home');
+      } else {
+        Alert.alert('Registration Failed', 'An account with this email already exists. Please login instead.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred during registration. Please try again.');
+    } finally {
       setLoading(false);
-      router.replace('/home');
-    }, 500);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={[Colors.secondary, Colors.primary]}
+        colors={[colors.secondary, colors.primary]}
         style={styles.gradient}
       >
         <KeyboardAvoidingView
@@ -50,10 +68,10 @@ export default function Register() {
                 onPress={() => router.back()}
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={24} color={Colors.white} />
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
               </TouchableOpacity>
               <View style={styles.iconContainer}>
-                <Ionicons name="person-add" size={48} color={Colors.white} />
+                <Ionicons name="person-add" size={48} color={colors.white} />
               </View>
               <Text style={styles.title}>Create Account</Text>
               <Text style={styles.subtitle}>Join our community</Text>
@@ -110,7 +128,7 @@ export default function Register() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -138,7 +156,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.white + '20',
+    backgroundColor: colors.white + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -146,19 +164,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: Colors.white,
+    color: colors.white,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.white + 'CC',
+    color: colors.white + 'CC',
     fontWeight: '500',
   },
   form: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
@@ -171,11 +189,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: Colors.textLight,
+    color: colors.textLight,
   },
   footerLink: {
     fontSize: 14,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '600',
   },
 });

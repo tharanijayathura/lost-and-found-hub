@@ -5,15 +5,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../../components/CustomButton';
 import { useItems } from '../../constants/context/ItemContext';
-import Colors from '../../constants/Colors';
+import { useTheme } from '../../constants/ThemeContext';
 
 export default function ItemDetails() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { items, deleteItem } = useItems();
+  const { colors } = useTheme();
   const itemId = params.itemId as string;
   
   const item = items.find(i => i.id === itemId);
+  const styles = createStyles(colors);
 
   const handleDelete = () => {
     Alert.alert(
@@ -48,7 +50,7 @@ export default function ItemDetails() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color={Colors.gray} />
+          <Ionicons name="alert-circle-outline" size={64} color={colors.gray} />
           <Text style={styles.errorText}>Item not found</Text>
           <CustomButton title="Go Back" onPress={() => router.back()} />
         </View>
@@ -67,7 +69,7 @@ export default function ItemDetails() {
               contentFit="cover"
             />
             <LinearGradient
-              colors={['transparent', Colors.background]}
+              colors={['transparent', colors.background]}
               style={styles.imageGradient}
             />
           </View>
@@ -88,7 +90,7 @@ export default function ItemDetails() {
           <View style={styles.infoSection}>
             <View style={styles.infoRow}>
               <View style={styles.infoIcon}>
-                <Ionicons name="location" size={20} color={Colors.primary} />
+                <Ionicons name="location" size={20} color={colors.primary} />
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Location</Text>
@@ -98,7 +100,7 @@ export default function ItemDetails() {
 
             <View style={styles.infoRow}>
               <View style={styles.infoIcon}>
-                <Ionicons name="calendar" size={20} color={Colors.primary} />
+                <Ionicons name="calendar" size={20} color={colors.primary} />
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Date Lost</Text>
@@ -132,10 +134,10 @@ export default function ItemDetails() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -159,7 +161,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     marginTop: -20,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
@@ -175,12 +177,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
     marginRight: 12,
   },
   categoryBadge: {
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: colors.primary + '15',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -189,15 +191,15 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: 'uppercase',
   },
   infoSection: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -222,21 +224,21 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: Colors.textLight,
+    color: colors.textLight,
     marginBottom: 4,
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     fontWeight: '600',
   },
   descriptionSection: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -245,12 +247,12 @@ const styles = StyleSheet.create({
   descriptionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 12,
   },
   descriptionText: {
     fontSize: 15,
-    color: Colors.textLight,
+    color: colors.textLight,
     lineHeight: 24,
   },
   actions: {
@@ -265,7 +267,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: Colors.textLight,
+    color: colors.textLight,
     marginTop: 16,
     marginBottom: 24,
   },
