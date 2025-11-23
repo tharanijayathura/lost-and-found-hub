@@ -38,7 +38,16 @@ export default function Register() {
     try {
       const success = await register(name, email, password);
       if (success) {
-        router.replace('/home');
+        Alert.alert(
+          'Registration Successful',
+          'Your account has been created! Please login to continue.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/login')
+            }
+          ]
+        );
       } else {
         Alert.alert('Registration Failed', 'An account with this email already exists. Please login instead.');
       }

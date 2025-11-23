@@ -13,6 +13,7 @@ const categories = ['Electronics', 'Personal Items', 'Clothing', 'Books', 'Acces
 
 export default function AddItem() {
   const { addItem } = useItems();
+  const { colors } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -20,6 +21,7 @@ export default function AddItem() {
   const [category, setCategory] = useState('');
   const [imageUri, setImageUri] = useState<string | undefined>();
   const router = useRouter();
+  const styles = createStyles(colors);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

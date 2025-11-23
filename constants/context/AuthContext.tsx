@@ -119,11 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       users.push(newUser);
       await saveUsers(users);
 
-      // Automatically log in the new user
-      const { password: _, ...userWithoutPassword } = newUser;
-      setUser(userWithoutPassword);
-      await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-
+      // Don't auto-login, user should login manually
       return true;
     } catch (error) {
       console.error('Error during registration:', error);
