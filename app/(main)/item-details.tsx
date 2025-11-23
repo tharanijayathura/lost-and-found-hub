@@ -1,16 +1,272 @@
-import { useLocalSearchParams } from 'expo-router';
-import { Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import CustomButton from '../../components/CustomButton';
+import { useItems } from '../../constants/context/ItemContext';
 import Colors from '../../constants/Colors';
 
 export default function ItemDetails() {
   const params = useLocalSearchParams();
-  const { item }: any = typeof params.item === 'string' ? JSON.parse(params.item) : params.item;
+  const router = useRouter();
+  const { items, deleteItem } = useItems();
+  const itemId = params.itemId as string;
+  
+  const item = items.find(i => i.id === itemId);
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Item',
+      'Are you sure you want to delete this item? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (item) {
+              deleteItem(item.id);
+              router.back();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEdit = () => {
+    if (item) {
+      router.push({
+        pathname: '/edit-item',
+        params: { itemId: item.id }
+      });
+    }
+  };
+
+  if (!item) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={Colors.gray} />
+          <Text style={styles.errorText}>Item not found</Text>
+          <CustomButton title="Go Back" onPress={() => router.back()} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, padding: 20, backgroundColor: '#f5f5f5' }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', color: Colors.text }}>{item.title}</Text>
-      <Text style={{ fontSize: 18, color: Colors.gray, marginVertical: 10 }}>Location: {item.location}</Text>
-      <Text style={{ fontSize: 18, color: Colors.gray }}>Date: {item.date}</Text>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {item.imageUri && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: item.imageUri }}
+              style={styles.image}
+              contentFit="cover"
+            />
+            <LinearGradient
+              colors={['transparent', Colors.background]}
+              style={styles.imageGradient}
+            />
+          </View>
+        )}
+
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <View style={styles.titleSection}>
+              <Text style={styles.title}>{item.title}</Text>
+              {item.category && (
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryText}>{item.category}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.infoSection}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <Ionicons name="location" size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Location</Text>
+                <Text style={styles.infoValue}>{item.location}</Text>
+              </View>
+            </View>
+
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <Ionicons name="calendar" size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Date Lost</Text>
+                <Text style={styles.infoValue}>{item.date}</Text>
+              </View>
+            </View>
+          </View>
+
+          {item.description && (
+            <View style={styles.descriptionSection}>
+              <Text style={styles.descriptionTitle}>Description</Text>
+              <Text style={styles.descriptionText}>{item.description}</Text>
+            </View>
+          )}
+
+          <View style={styles.actions}>
+            <CustomButton
+              title="Edit Item"
+              onPress={handleEdit}
+              variant="outline"
+            />
+            <CustomButton
+              title="Mark as Found"
+              onPress={handleDelete}
+              variant="danger"
+            />
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 300,
+    position: 'relative',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  imageGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+  },
+  content: {
+    padding: 20,
+    marginTop: -20,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  titleSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: Colors.text,
+    flex: 1,
+    marginRight: 12,
+  },
+  categoryBadge: {
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+  },
+  infoSection: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  infoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: Colors.textLight,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  descriptionSection: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  descriptionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  descriptionText: {
+    fontSize: 15,
+    color: Colors.textLight,
+    lineHeight: 24,
+  },
+  actions: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: Colors.textLight,
+    marginTop: 16,
+    marginBottom: 24,
+  },
+});
