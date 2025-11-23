@@ -1,31 +1,19 @@
-import { StyleSheet } from 'react-native';
+import { View, FlatList, Text } from 'react-native';
+import ItemCard from '../../components/ItemCard';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+export default function Home() {
+  const data = [
+    { id: '1', title: 'Lost iPhone', location: 'Library', date: '2025-11-23' },
+    { id: '2', title: 'Lost Laptop', location: 'Cafeteria', date: '2025-11-22' },
+  ];
 
-export default function TabOneScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
+    <View style={{ flex: 1, padding: 10 }}>
+      <FlatList
+        data={data}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => <ItemCard item={item} />}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-});

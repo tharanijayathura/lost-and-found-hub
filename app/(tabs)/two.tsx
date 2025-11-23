@@ -1,31 +1,24 @@
-import { StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+export default function AddItem() {
+  const [title, setTitle] = useState('');
+  const [location, setLocation] = useState('');
+  const [date, setDate] = useState('');
 
-export default function TabTwoScreen() {
+  const handleAdd = () => {
+    console.log({ title, location, date });
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab Two</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/two.tsx" />
+    <View style={{ flex: 1, padding: 20 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>Add Lost Item</Text>
+      <TextInput placeholder="Title" value={title} onChangeText={setTitle} style={{ borderWidth: 1, padding: 10, marginBottom: 15, borderRadius: 8 }} />
+      <TextInput placeholder="Location" value={location} onChangeText={setLocation} style={{ borderWidth: 1, padding: 10, marginBottom: 15, borderRadius: 8 }} />
+      <TextInput placeholder="Date" value={date} onChangeText={setDate} style={{ borderWidth: 1, padding: 10, marginBottom: 15, borderRadius: 8 }} />
+      <TouchableOpacity onPress={handleAdd} style={{ backgroundColor: '#6200ee', padding: 15, borderRadius: 8 }}>
+        <Text style={{ color: '#fff', textAlign: 'center' }}>Add Item</Text>
+      </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-});
