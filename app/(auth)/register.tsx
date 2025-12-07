@@ -12,6 +12,7 @@ import { useTheme } from '../../constants/ThemeContext';
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,40 +22,76 @@ export default function Register() {
   const styles = createStyles(colors);
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
-      Alert.alert('Required Fields', 'Please fill in all required fields.');
+    // Validation
+    if (!name || !email || !password || !studentId) {
+      Alert.alert('Required Fields', 'Please fill in all required fields including Student Index Number.');
       return;
     }
+
     if (password !== confirmPassword) {
       Alert.alert('Password Mismatch', 'Passwords do not match. Please try again.');
       return;
     }
+
     if (password.length < 6) {
       Alert.alert('Weak Password', 'Password must be at least 6 characters long.');
       return;
     }
 
+    if (studentId.trim().length === 0) {
+      Alert.alert('Student ID Required', 'Please enter your Student Index Number.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const success = await register(name, email, password);
+      const success = await register(name, email, password, studentId.trim());
       if (success) {
+        // Reset form
+        setName('');
+        setEmail('');
+        setStudentId('');
+        setPassword('');
+        setConfirmPassword('');
+        setLoading(false);
+        
+        // Show success message first
         Alert.alert(
           'Registration Successful',
           'Your account has been created! Please login to continue.',
           [
             {
               text: 'OK',
-              onPress: () => router.replace('/login')
+              onPress: () => {
+                // Navigate to login screen
+                router.replace('/login');
+              }
             }
-          ]
+          ],
+          { cancelable: false }
         );
       } else {
+        setLoading(false);
         Alert.alert('Registration Failed', 'An account with this email already exists. Please login instead.');
       }
-    } catch (error) {
-      Alert.alert('Error', 'An error occurred during registration. Please try again.');
-    } finally {
+    } catch (error: any) {
       setLoading(false);
+      console.error('Registration error:', error);
+      let errorMessage = 'An error occurred during registration. Please try again.';
+      
+      if (error?.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please login instead.';
+      } else if (error?.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (error?.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error?.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
     }
   };
 
@@ -102,6 +139,14 @@ export default function Register() {
                 autoCapitalize="none"
               />
               <InputField
+                label="Student Index Number *"
+                placeholder="Enter your student index number"
+                value={studentId}
+                onChangeText={setStudentId}
+                keyboardType="default"
+                autoCapitalize="none"
+              />
+              <InputField
                 label="Password"
                 placeholder="Create a password"
                 value={password}
@@ -120,7 +165,7 @@ export default function Register() {
                 title="Sign Up"
                 onPress={handleRegister}
                 loading={loading}
-                disabled={!name || !email || !password || password !== confirmPassword}
+                disabled={!name || !email || !password || !studentId || password !== confirmPassword}
               />
 
               <View style={styles.footer}>

@@ -5,19 +5,30 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../../components/CustomButton';
 import { useItems } from '../../constants/context/ItemContext';
+import { useAuth } from '../../constants/context/AuthContext';
 import { useTheme } from '../../constants/ThemeContext';
+import * as Linking from 'expo-linking';
 
 export default function ItemDetails() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { items, deleteItem } = useItems();
+  const { items, deleteItem, isOwner, updateItemStatus } = useItems();
+  const { user } = useAuth();
   const { colors } = useTheme();
   const itemId = params.itemId as string;
   
   const item = items.find(i => i.id === itemId);
   const styles = createStyles(colors);
+  const isItemOwner = item ? isOwner(item) : false;
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    if (!item) return;
+    
+    if (!isItemOwner) {
+      Alert.alert('Permission Denied', 'You can only delete your own items.');
+      return;
+    }
+
     Alert.alert(
       'Delete Item',
       'Are you sure you want to delete this item? This action cannot be undone.',
@@ -26,10 +37,12 @@ export default function ItemDetails() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            if (item) {
-              deleteItem(item.id);
+          onPress: async () => {
+            try {
+              await deleteItem(item.id);
               router.back();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete item');
             }
           },
         },
@@ -38,12 +51,66 @@ export default function ItemDetails() {
   };
 
   const handleEdit = () => {
-    if (item) {
-      router.push({
-        pathname: '/edit-item',
-        params: { itemId: item.id }
-      });
+    if (!item) return;
+    
+    if (!isItemOwner) {
+      Alert.alert('Permission Denied', 'You can only edit your own items.');
+      return;
     }
+
+    router.push({
+      pathname: '/edit-item',
+      params: { itemId: item.id }
+    });
+  };
+
+  const handleMarkAsFound = async () => {
+    if (!item) return;
+    
+    if (!isItemOwner) {
+      Alert.alert('Permission Denied', 'You can only mark your own items as found.');
+      return;
+    }
+
+    Alert.alert(
+      'Mark as Found',
+      'Are you sure you found this item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Yes, Found',
+          onPress: async () => {
+            try {
+              await updateItemStatus(item.id, 'found');
+              Alert.alert('Success', 'Item marked as found!');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to update status');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleContact = () => {
+    if (!item?.userEmail) {
+      Alert.alert('No Contact Info', 'Contact information not available for this item.');
+      return;
+    }
+
+    Alert.alert(
+      'Contact Item Owner',
+      `Would you like to contact ${item.userName || 'the owner'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send Email',
+          onPress: () => {
+            Linking.openURL(`mailto:${item.userEmail}?subject=Regarding: ${item.title}`);
+          },
+        },
+      ]
+    );
   };
 
   if (!item) {
@@ -107,6 +174,44 @@ export default function ItemDetails() {
                 <Text style={styles.infoValue}>{item.date}</Text>
               </View>
             </View>
+
+            {item.userName && (
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="person" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Posted By</Text>
+                  <Text style={styles.infoValue}>{item.userName}</Text>
+                </View>
+              </View>
+            )}
+
+            {item.status && (
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons 
+                    name={item.status === 'found' ? "checkmark-circle" : "time"} 
+                    size={20} 
+                    color={item.status === 'found' ? colors.success : colors.warning} 
+                  />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Status</Text>
+                  <View style={[
+                    styles.statusBadge,
+                    item.status === 'found' && styles.statusBadgeFound
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      item.status === 'found' && styles.statusTextFound
+                    ]}>
+                      {item.status === 'found' ? 'Found' : 'Pending'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
 
           {item.description && (
@@ -117,16 +222,33 @@ export default function ItemDetails() {
           )}
 
           <View style={styles.actions}>
-            <CustomButton
-              title="Edit Item"
-              onPress={handleEdit}
-              variant="outline"
-            />
-            <CustomButton
-              title="Mark as Found"
-              onPress={handleDelete}
-              variant="danger"
-            />
+            {isItemOwner ? (
+              <>
+                {item.status !== 'found' && (
+                  <CustomButton
+                    title="Mark as Found"
+                    onPress={handleMarkAsFound}
+                    variant="secondary"
+                  />
+                )}
+                <CustomButton
+                  title="Edit Item"
+                  onPress={handleEdit}
+                  variant="outline"
+                />
+                <CustomButton
+                  title="Delete Item"
+                  onPress={handleDelete}
+                  variant="danger"
+                />
+              </>
+            ) : (
+              <CustomButton
+                title="Contact Owner"
+                onPress={handleContact}
+                variant="primary"
+              />
+            )}
           </View>
         </View>
       </ScrollView>
@@ -270,5 +392,23 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.textLight,
     marginTop: 16,
     marginBottom: 24,
+  },
+  statusBadge: {
+    backgroundColor: colors.warning + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  statusBadgeFound: {
+    backgroundColor: colors.success + '20',
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.warning,
+  },
+  statusTextFound: {
+    color: colors.success,
   },
 });

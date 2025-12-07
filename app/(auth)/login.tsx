@@ -13,7 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, resetPassword } = useAuth();
   const { colors } = useTheme();
   const router = useRouter();
   const styles = createStyles(colors);
@@ -67,13 +67,39 @@ export default function Login() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-              <InputField
-                label="Password"
-                placeholder="Enter your password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordContainer}>
+                <InputField
+                  label="Password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!email) {
+                      Alert.alert('Email Required', 'Please enter your email address first.');
+                      return;
+                    }
+                    try {
+                      const success = await resetPassword(email);
+                      if (success) {
+                        Alert.alert(
+                          'Password Reset Email Sent',
+                          'Please check your email for password reset instructions.'
+                        );
+                      } else {
+                        Alert.alert('Error', 'Failed to send password reset email. Please check your email address.');
+                      }
+                    } catch (error) {
+                      Alert.alert('Error', 'An error occurred. Please try again.');
+                    }
+                  }}
+                  style={styles.forgotPasswordButton}
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
 
               <CustomButton
                 title="Sign In"
@@ -158,5 +184,19 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '600',
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: -8,
+    marginBottom: 8,
+    padding: 4,
+  },
+  forgotPasswordText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '500',
   },
 });

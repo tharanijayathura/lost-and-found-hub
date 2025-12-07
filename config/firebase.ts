@@ -1,0 +1,31 @@
+// Firebase Configuration
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
+// Your Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDHCVYW78Y9ZW-QHSp6OjwW85mjJi0-yLI",
+  authDomain: "lost-and-found-hub-25a52.firebaseapp.com",
+  projectId: "lost-and-found-hub-25a52",
+  storageBucket: "lost-and-found-hub-25a52.firebasestorage.app",
+  messagingSenderId: "331630424860",
+  appId: "1:331630424860:web:26e6aa1117f9a7364f80d9",
+  measurementId: "G-0PCHDQ6TSN"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Initialize Firebase Auth
+// Note: getAuth() automatically uses persistence in React Native/Expo
+// The warning about AsyncStorage is just informational - auth will still persist
+export const auth = getAuth(app);
+
+// Initialize Firebase services
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+export default app;
+

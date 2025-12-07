@@ -1,5 +1,20 @@
-import { createContext, useState, ReactNode, useContext } from 'react';
-import uuid from 'react-native-uuid';
+import { createContext, useState, ReactNode, useContext, useEffect } from 'react';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy, 
+  onSnapshot,
+  Timestamp,
+  where,
+  getDocs,
+  getDoc
+} from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { useAuth } from './AuthContext';
 
 export interface Item {
   id: string;
@@ -9,77 +24,271 @@ export interface Item {
   date: string;
   imageUri?: string;
   category?: string;
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  status?: 'pending' | 'found';
+  createdAt?: any;
 }
 
 interface ItemContextProps {
   items: Item[];
   favorites: string[];
-  addItem: (item: Omit<Item, 'id'>) => void;
-  editItem: (item: Item) => void;
-  deleteItem: (id: string) => void;
-  toggleFavorite: (id: string) => void;
+  addItem: (item: Omit<Item, 'id' | 'createdAt' | 'userName' | 'userEmail'>) => Promise<void>;
+  editItem: (item: Item) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+  toggleFavorite: (id: string) => Promise<void>;
   isFavorite: (id: string) => boolean;
+  isOwner: (item: Item) => boolean;
+  updateItemStatus: (id: string, status: 'pending' | 'found') => Promise<void>;
+  getMyItems: () => Item[];
+  isLoading: boolean;
 }
 
 const ItemContext = createContext<ItemContextProps>({} as ItemContextProps);
 
 export const ItemProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
+  const [items, setItems] = useState<Item[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [items, setItems] = useState<Item[]>([
-    { 
-      id: '1', 
-      title: 'Lost iPhone 14 Pro', 
-      description: 'Black iPhone 14 Pro with a blue case. Last seen in the library near the study area. Please contact if found.',
-      location: 'Main Library - 2nd Floor', 
-      date: '2025-01-15',
-      category: 'Electronics',
-      imageUri: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400'
-    },
-    { 
-      id: '2', 
-      title: 'Lost MacBook Pro', 
-      description: 'Silver MacBook Pro 13" with stickers on the cover. Contains important project files.',
-      location: 'Student Center - Cafeteria', 
-      date: '2025-01-14',
-      category: 'Electronics',
-      imageUri: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400'
-    },
-    { 
-      id: '3', 
-      title: 'Lost Backpack', 
-      description: 'Red Nike backpack with university logo. Contains textbooks and notebooks.',
-      location: 'Science Building - Room 201', 
-      date: '2025-01-13',
-      category: 'Personal Items',
-      imageUri: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400'
-    },
-  ]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addItem = (item: Omit<Item, 'id'>) => {
-    setItems(prev => [{ id: uuid.v4().toString(), ...item }, ...prev]);
-  };
-
-  const editItem = (updated: Item) => {
-    setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-  };
-
-  const deleteItem = (id: string) => {
-    setItems(prev => prev.filter(i => i.id !== id));
-    setFavorites(prev => prev.filter(favId => favId !== id));
-  };
-
-  const toggleFavorite = (id: string) => {
-    setFavorites(prev => 
-      prev.includes(id) 
-        ? prev.filter(favId => favId !== id)
-        : [...prev, id]
+  // Load items from Firestore
+  useEffect(() => {
+    const itemsQuery = query(
+      collection(db, 'items'),
+      orderBy('createdAt', 'desc')
     );
+
+    const unsubscribe = onSnapshot(itemsQuery, async (snapshot) => {
+      const itemsData: Item[] = [];
+      for (const docSnapshot of snapshot.docs) {
+        const data = docSnapshot.data();
+        let userName = data.userName;
+        let userEmail = data.userEmail;
+        
+        // If user info not in item, fetch from users collection
+        if (!userName && data.userId) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', data.userId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              userName = userData.name;
+              userEmail = userData.email;
+            }
+          } catch (error) {
+            console.error('Error fetching user info:', error);
+          }
+        }
+        
+        itemsData.push({
+          id: docSnapshot.id,
+          ...data,
+          date: data.date || '',
+          userName: userName || undefined,
+          userEmail: userEmail || undefined,
+          status: data.status || 'pending',
+          createdAt: data.createdAt,
+        } as Item);
+      }
+      setItems(itemsData);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Error loading items:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Load favorites from Firestore for current user
+  useEffect(() => {
+    if (!user) {
+      setFavorites([]);
+      return;
+    }
+
+    const favoritesQuery = query(
+      collection(db, 'favorites'),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(favoritesQuery, (snapshot) => {
+      const userFavorites: string[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.userId === user.id && data.itemId) {
+          userFavorites.push(data.itemId);
+        }
+      });
+      setFavorites(userFavorites);
+    }, (error) => {
+      console.error('Error loading favorites:', error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const addItem = async (item: Omit<Item, 'id' | 'createdAt' | 'userName' | 'userEmail'>): Promise<void> => {
+    if (!user) {
+      throw new Error('User must be logged in to add items');
+    }
+    try {
+      const itemData = {
+        title: item.title,
+        description: item.description || '',
+        location: item.location,
+        date: item.date,
+        category: item.category || null,
+        imageUri: item.imageUri || null,
+        userId: user.id,
+        userName: user.name || '',
+        userEmail: user.email || '',
+        status: item.status || 'pending',
+        createdAt: Timestamp.now(),
+      };
+      
+      console.log('Adding item to Firestore with data:', {
+        ...itemData,
+        createdAt: 'Timestamp.now()'
+      });
+      
+      const docRef = await addDoc(collection(db, 'items'), itemData);
+      console.log('Item added successfully with ID:', docRef.id);
+    } catch (error: any) {
+      console.error('Error adding item to Firestore:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Provide more specific error messages
+      if (error.code === 'permission-denied') {
+        throw new Error('Permission denied. Please check your Firestore security rules or ensure you are logged in.');
+      } else if (error.code === 'unavailable') {
+        throw new Error('Firestore is unavailable. Please check your internet connection.');
+      } else if (error.message) {
+        throw new Error(`Failed to add item: ${error.message}`);
+      } else {
+        throw new Error('Failed to add item. Please try again.');
+      }
+    }
+  };
+
+  const editItem = async (updated: Item): Promise<void> => {
+    if (!user) {
+      throw new Error('User must be logged in to edit items');
+    }
+    // Check if user owns the item
+    if (updated.userId !== user.id) {
+      throw new Error('You can only edit your own items');
+    }
+    try {
+      const { id, createdAt, userId, userName, userEmail, ...itemData } = updated;
+      await updateDoc(doc(db, 'items', id), itemData);
+    } catch (error) {
+      console.error('Error updating item:', error);
+      throw error;
+    }
+  };
+
+  const deleteItem = async (id: string): Promise<void> => {
+    if (!user) {
+      throw new Error('User must be logged in to delete items');
+    }
+    // Find the item to check ownership
+    const item = items.find(i => i.id === id);
+    if (!item) {
+      throw new Error('Item not found');
+    }
+    if (item.userId !== user.id) {
+      throw new Error('You can only delete your own items');
+    }
+    try {
+      await deleteDoc(doc(db, 'items', id));
+      // Also delete any favorites for this item
+      const favoritesQuery = query(
+        collection(db, 'favorites'),
+        where('itemId', '==', id)
+      );
+      const snapshot = await getDocs(favoritesQuery);
+      snapshot.forEach(async (favDoc) => {
+        await deleteDoc(favDoc.ref);
+      });
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      throw error;
+    }
+  };
+
+  const toggleFavorite = async (id: string): Promise<void> => {
+    if (!user) return;
+
+    try {
+      const { getDocs, where } = await import('firebase/firestore');
+      const favoritesQuery = query(
+        collection(db, 'favorites'),
+        where('userId', '==', user.id),
+        where('itemId', '==', id)
+      );
+      const snapshot = await getDocs(favoritesQuery);
+      
+      if (!snapshot.empty) {
+        // Remove favorite
+        snapshot.forEach(async (doc) => {
+          await deleteDoc(doc.ref);
+        });
+      } else {
+        // Add favorite
+        await addDoc(collection(db, 'favorites'), {
+          userId: user.id,
+          itemId: id,
+          createdAt: Timestamp.now(),
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   const isFavorite = (id: string) => favorites.includes(id);
 
+  const isOwner = (item: Item): boolean => {
+    return user?.id === item.userId;
+  };
+
+  const updateItemStatus = async (id: string, status: 'pending' | 'found'): Promise<void> => {
+    if (!user) {
+      throw new Error('User must be logged in');
+    }
+    const item = items.find(i => i.id === id);
+    if (!item || item.userId !== user.id) {
+      throw new Error('You can only update your own items');
+    }
+    try {
+      await updateDoc(doc(db, 'items', id), { status });
+    } catch (error) {
+      console.error('Error updating item status:', error);
+      throw error;
+    }
+  };
+
+  const getMyItems = (): Item[] => {
+    if (!user) return [];
+    return items.filter(item => item.userId === user.id);
+  };
+
   return (
-    <ItemContext.Provider value={{ items, favorites, addItem, editItem, deleteItem, toggleFavorite, isFavorite }}>
+    <ItemContext.Provider value={{ 
+      items, 
+      favorites, 
+      addItem, 
+      editItem, 
+      deleteItem, 
+      toggleFavorite, 
+      isFavorite,
+      isOwner,
+      updateItemStatus,
+      getMyItems,
+      isLoading 
+    }}>
       {children}
     </ItemContext.Provider>
   );

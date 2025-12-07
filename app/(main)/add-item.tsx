@@ -1,25 +1,35 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import { useItems } from '../../constants/context/ItemContext';
 import { useTheme } from '../../constants/ThemeContext';
+import { useAuth } from '../../constants/context/AuthContext';
+import { compressImage } from '../../utils/imageUtils';
+import { validateItemTitle, validateItemLocation, validateItemDescription } from '../../utils/validation';
+import { handleError } from '../../utils/errorHandler';
 
 const categories = ['Electronics', 'Personal Items', 'Clothing', 'Books', 'Accessories', 'Other'];
 
 export default function AddItem() {
   const { addItem } = useItems();
   const { colors } = useTheme();
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState('');
   const [imageUri, setImageUri] = useState<string | undefined>();
+  const [imageUrl, setImageUrl] = useState<string>('');
+  const [useUrl, setUseUrl] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const router = useRouter();
   const styles = createStyles(colors);
 
@@ -42,16 +52,223 @@ export default function AddItem() {
     }
   };
 
-  const handleAdd = () => {
-    if (!title || !location) {
-      Alert.alert('Required Fields', 'Please fill in title and location.');
+  const uploadImage = async (uri: string): Promise<string | undefined> => {
+    try {
+      console.log('Starting image upload...', uri);
+      
+      // For React Native, we need to use a different approach
+      // Convert the local file URI to a blob that Firebase can use
+      const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
+      const blob = await response.blob();
+      console.log('Blob created, size:', blob.size);
+      
+      const filename = `items/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+      const storageRef = ref(storage, filename);
+      
+      console.log('Uploading to Firebase Storage...', filename);
+      await uploadBytes(storageRef, blob);
+      console.log('Upload complete, getting download URL...');
+      
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log('Download URL:', downloadURL);
+      
+      return downloadURL;
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      console.error('Error details:', {
+        code: error?.code,
+        message: error?.message,
+        stack: error?.stack
+      });
+      
+      // More specific error messages
+      if (error?.code === 'storage/unauthorized') {
+        throw new Error('Storage permission denied. Please check Firebase Storage rules.');
+      } else if (error?.code === 'storage/canceled') {
+        throw new Error('Upload was canceled.');
+      } else if (error?.code === 'storage/unknown') {
+        throw new Error('Unknown storage error. Please check your internet connection.');
+      }
+      
+      throw error;
+    }
+  };
+
+  const handleAdd = async () => {
+    // Check if user is authenticated
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please log in to add items.');
       return;
     }
 
-    addItem({ title, description, location, date, category, imageUri });
-    Alert.alert('Success', 'Item added successfully!', [
-      { text: 'OK', onPress: () => router.back() }
-    ]);
+    console.log('User authenticated:', user.id, user.name);
+
+    // Validate fields
+    const titleValidation = validateItemTitle(title);
+    const locationValidation = validateItemLocation(location);
+    const descriptionValidation = validateItemDescription(description || '');
+
+    if (!titleValidation.isValid) {
+      Alert.alert('Validation Error', titleValidation.error);
+      return;
+    }
+
+    if (!locationValidation.isValid) {
+      Alert.alert('Validation Error', locationValidation.error);
+      return;
+    }
+
+    if (!descriptionValidation.isValid) {
+      Alert.alert('Validation Error', descriptionValidation.error);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      let finalImageUrl: string | undefined = undefined;
+
+      if (useUrl) {
+        // User provided image URL
+        if (imageUrl.trim()) {
+          // Validate URL format
+          try {
+            const url = new URL(imageUrl.trim());
+            // Check if it's http or https
+            if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+              throw new Error('URL must start with http:// or https://');
+            }
+            finalImageUrl = imageUrl.trim();
+            console.log('Using image URL:', finalImageUrl);
+          } catch (error: any) {
+            Alert.alert('Invalid URL', error.message || 'Please enter a valid image URL (e.g., https://example.com/image.jpg)');
+            setUploading(false);
+            return;
+          }
+        } else {
+          // No URL provided, that's okay - item can be added without image
+          finalImageUrl = undefined;
+        }
+      } else if (imageUri) {
+        // User selected image from device
+        if (imageUri.startsWith('http')) {
+          // Already a URL
+          finalImageUrl = imageUri;
+        } else {
+          // Local file - try to upload to Firebase Storage
+          try {
+            console.log('Compressing image...');
+            const compressedUri = await compressImage(imageUri);
+            console.log('Image compressed, uploading...');
+            
+            const uploadedUrl = await uploadImage(compressedUri);
+            if (uploadedUrl) {
+              finalImageUrl = uploadedUrl;
+              console.log('Image uploaded successfully:', uploadedUrl);
+            } else {
+              // Upload failed, ask user if they want to continue without image
+              Alert.alert(
+                'Image Upload Failed', 
+                'Failed to upload image. You can add an image URL instead, or continue without an image.',
+                [
+                  {
+                    text: 'Continue Without Image',
+                    style: 'cancel',
+                    onPress: () => {
+                      finalImageUrl = undefined;
+                    }
+                  },
+                  {
+                    text: 'Cancel',
+                    onPress: () => {
+                      setUploading(false);
+                      return;
+                    }
+                  }
+                ]
+              );
+              if (!finalImageUrl) {
+                setUploading(false);
+                return;
+              }
+            }
+          } catch (uploadError: any) {
+            console.error('Image upload failed:', uploadError);
+            Alert.alert(
+              'Image Upload Failed', 
+              'Firebase Storage is not available. You can:\n\n1. Use an image URL instead\n2. Continue without an image',
+              [
+                {
+                  text: 'Use URL Instead',
+                  onPress: () => {
+                    setUseUrl(true);
+                    setUploading(false);
+                  }
+                },
+                {
+                  text: 'Continue Without Image',
+                  style: 'cancel',
+                  onPress: () => {
+                    finalImageUrl = undefined;
+                  }
+                },
+                {
+                  text: 'Cancel',
+                  onPress: () => {
+                    setUploading(false);
+                    return;
+                  }
+                }
+              ]
+            );
+            setUploading(false);
+            return;
+          }
+        }
+      }
+
+      console.log('Adding item to Firestore...', {
+        title: title.trim(),
+        location: location.trim(),
+        date,
+        category: category || undefined,
+        imageUri: finalImageUrl,
+        hasImage: !!finalImageUrl
+      });
+
+      // Add item to Firestore
+      await addItem({ 
+        title: title.trim(), 
+        description: description.trim() || undefined, 
+        location: location.trim(), 
+        date, 
+        category: category || undefined, 
+        imageUri: finalImageUrl,
+        status: 'pending'
+      });
+
+      console.log('Item added successfully!');
+      setUploading(false);
+
+      Alert.alert('Success', 'Item added successfully!', [
+        { 
+          text: 'OK', 
+          onPress: () => {
+            console.log('Navigating back...');
+            router.back();
+          }
+        }
+      ]);
+    } catch (error: any) {
+      console.error('Error adding item:', error);
+      setUploading(false);
+      const errorMessage = handleError(error, 'AddItem');
+      console.error('Error message:', errorMessage);
+      Alert.alert('Error', errorMessage);
+    }
   };
 
   return (
@@ -64,25 +281,78 @@ export default function AddItem() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.image} contentFit="cover" />
+        <View style={styles.imageSection}>
+          <View style={styles.imageOptionTabs}>
+            <TouchableOpacity
+              onPress={() => {
+                setUseUrl(false);
+                setImageUrl('');
+              }}
+              style={[styles.tab, !useUrl && styles.tabActive]}
+            >
+              <Ionicons name="image-outline" size={20} color={!useUrl ? colors.white : colors.text} />
+              <Text style={[styles.tabText, !useUrl && styles.tabTextActive]}>From Device</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setUseUrl(true);
+                setImageUri(undefined);
+              }}
+              style={[styles.tab, useUrl && styles.tabActive]}
+            >
+              <Ionicons name="link-outline" size={20} color={useUrl ? colors.white : colors.text} />
+              <Text style={[styles.tabText, useUrl && styles.tabTextActive]}>Image URL</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!useUrl ? (
+            <TouchableOpacity onPress={pickImage} style={styles.imagePicker} disabled={uploading}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.image} contentFit="cover" />
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="camera-outline" size={48} color={colors.gray} />
+                  <Text style={styles.imagePlaceholderText}>Tap to add photo</Text>
+                </View>
+              )}
+              <View style={styles.imageOverlay}>
+                <Ionicons name="camera" size={24} color={colors.white} />
+              </View>
+            </TouchableOpacity>
           ) : (
-            <View style={styles.imagePlaceholder}>
-              <Ionicons name="camera-outline" size={48} color={colors.gray} />
-              <Text style={styles.imagePlaceholderText}>Tap to add photo</Text>
+            <View style={styles.urlInputContainer}>
+              <InputField
+                label="Image URL"
+                placeholder="https://example.com/image.jpg"
+                value={imageUrl}
+                onChangeText={setImageUrl}
+                keyboardType="url"
+                autoCapitalize="none"
+                editable={!uploading}
+              />
+              {imageUrl && (
+                <View style={styles.urlPreview}>
+                  <Image 
+                    source={{ uri: imageUrl }} 
+                    style={styles.urlPreviewImage} 
+                    contentFit="cover"
+                    onError={() => {
+                      // Image failed to load, but that's okay
+                    }}
+                  />
+                  <Text style={styles.urlPreviewText}>Preview</Text>
+                </View>
+              )}
             </View>
           )}
-          <View style={styles.imageOverlay}>
-            <Ionicons name="camera" size={24} color={colors.white} />
-          </View>
-        </TouchableOpacity>
+        </View>
 
         <InputField
           label="Item Title *"
           placeholder="e.g., Lost iPhone 14 Pro"
           value={title}
           onChangeText={setTitle}
+          editable={!uploading}
         />
 
         <InputField
@@ -92,6 +362,7 @@ export default function AddItem() {
           onChangeText={setDescription}
           multiline
           numberOfLines={4}
+          editable={!uploading}
         />
 
         <InputField
@@ -99,6 +370,7 @@ export default function AddItem() {
           placeholder="e.g., Main Library - 2nd Floor"
           value={location}
           onChangeText={setLocation}
+          editable={!uploading}
         />
 
         <View style={styles.categorySection}>
@@ -107,10 +379,12 @@ export default function AddItem() {
             {categories.map((cat) => (
               <TouchableOpacity
                 key={cat}
-                onPress={() => setCategory(cat)}
+                onPress={() => !uploading && setCategory(cat)}
+                disabled={uploading}
                 style={[
                   styles.categoryChip,
-                  category === cat && styles.categoryChipActive
+                  category === cat && styles.categoryChipActive,
+                  uploading && styles.disabled
                 ]}
               >
                 <Text style={[
@@ -129,12 +403,21 @@ export default function AddItem() {
           placeholder="YYYY-MM-DD"
           value={date}
           onChangeText={setDate}
+          editable={!uploading}
         />
 
+        {uploading && (
+          <View style={styles.uploadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.uploadingText}>Uploading image...</Text>
+          </View>
+        )}
+
         <CustomButton
-          title="Add Item"
+          title={uploading ? "Adding..." : "Add Item"}
           onPress={handleAdd}
-          disabled={!title || !location}
+          disabled={!title || !location || uploading}
+          loading={uploading}
         />
       </ScrollView>
     </SafeAreaView>
@@ -203,6 +486,60 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  imageSection: {
+    marginBottom: 24,
+  },
+  imageOptionTabs: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    backgroundColor: colors.grayLight,
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  tabActive: {
+    backgroundColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  tabTextActive: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+  urlInputContainer: {
+    marginBottom: 0,
+  },
+  urlPreview: {
+    marginTop: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  urlPreviewImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: colors.grayLight,
+  },
+  urlPreviewText: {
+    padding: 8,
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.textLight,
+    backgroundColor: colors.grayLight,
+  },
   categorySection: {
     marginBottom: 16,
   },
@@ -237,5 +574,17 @@ const createStyles = (colors: any) => StyleSheet.create({
   categoryChipTextActive: {
     color: colors.primary,
     fontWeight: '600',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  uploadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  uploadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: colors.textLight,
   },
 });

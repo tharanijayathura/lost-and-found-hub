@@ -8,14 +8,18 @@ import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import { useItems } from '../../constants/context/ItemContext';
 import { Item } from '../../constants/context/ItemContext';
+import { useAuth } from '../../constants/context/AuthContext';
 import { useTheme } from '../../constants/ThemeContext';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../config/firebase';
 
 const categories = ['Electronics', 'Personal Items', 'Clothing', 'Books', 'Accessories', 'Other'];
 
 export default function EditItem() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { items, editItem } = useItems();
+  const { items, editItem, isOwner } = useItems();
+  const { user } = useAuth();
   const { colors } = useTheme();
   const itemId = params.itemId as string;
   
@@ -28,6 +32,8 @@ export default function EditItem() {
   const [date, setDate] = useState(item?.date || '');
   const [category, setCategory] = useState(item?.category || '');
   const [imageUri, setImageUri] = useState<string | undefined>(item?.imageUri);
+  const [imageUrl, setImageUrl] = useState<string>(item?.imageUri?.startsWith('http') ? item.imageUri : '');
+  const [useUrl, setUseUrl] = useState(item?.imageUri?.startsWith('http') || false);
 
   useEffect(() => {
     if (item) {
@@ -37,6 +43,13 @@ export default function EditItem() {
       setDate(item.date);
       setCategory(item.category || '');
       setImageUri(item.imageUri);
+      if (item.imageUri?.startsWith('http')) {
+        setImageUrl(item.imageUri);
+        setUseUrl(true);
+      } else {
+        setImageUrl('');
+        setUseUrl(false);
+      }
     }
   }, [item]);
 
@@ -59,7 +72,32 @@ export default function EditItem() {
     }
   };
 
-  const handleEdit = () => {
+  useEffect(() => {
+    if (item && !isOwner(item)) {
+      Alert.alert('Permission Denied', 'You can only edit your own items.', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    }
+  }, [item]);
+
+  const uploadImage = async (uri: string): Promise<string | undefined> => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const filename = `items/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+      const storageRef = ref(storage, filename);
+      
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', 'Failed to upload image. Please try again.');
+      return undefined;
+    }
+  };
+
+  const handleEdit = async () => {
     if (!title || !location) {
       Alert.alert('Required Fields', 'Please fill in title and location.');
       return;
@@ -67,20 +105,106 @@ export default function EditItem() {
 
     if (!item) return;
 
-    const updatedItem: Item = {
-      id: item.id,
-      title,
-      description,
-      location,
-      date,
-      category,
-      imageUri,
-    };
+    if (!isOwner(item)) {
+      Alert.alert('Permission Denied', 'You can only edit your own items.');
+      return;
+    }
 
-    editItem(updatedItem);
-    Alert.alert('Success', 'Item updated successfully!', [
-      { text: 'OK', onPress: () => router.back() }
-    ]);
+    try {
+      let finalImageUrl: string | undefined = undefined;
+
+      if (useUrl) {
+        // User provided image URL
+        if (imageUrl.trim()) {
+          try {
+            new URL(imageUrl.trim());
+            finalImageUrl = imageUrl.trim();
+          } catch {
+            Alert.alert('Invalid URL', 'Please enter a valid image URL (e.g., https://example.com/image.jpg)');
+            return;
+          }
+        }
+      } else if (imageUri) {
+        // User selected image from device
+        if (imageUri.startsWith('http')) {
+          // Already a URL
+          finalImageUrl = imageUri;
+        } else if (imageUri !== item.imageUri) {
+          // New local file - try to upload
+          try {
+            const uploadedUrl = await uploadImage(imageUri);
+            if (uploadedUrl) {
+              finalImageUrl = uploadedUrl;
+            } else {
+              Alert.alert(
+                'Image Upload Failed',
+                'Failed to upload image. You can use an image URL instead.',
+                [
+                  {
+                    text: 'Use URL Instead',
+                    onPress: () => {
+                      setUseUrl(true);
+                    }
+                  },
+                  {
+                    text: 'Keep Current Image',
+                    style: 'cancel',
+                    onPress: () => {
+                      finalImageUrl = item.imageUri;
+                    }
+                  }
+                ]
+              );
+              return;
+            }
+          } catch (uploadError: any) {
+            Alert.alert(
+              'Image Upload Failed',
+              'Firebase Storage is not available. Please use an image URL instead.',
+              [
+                {
+                  text: 'Use URL Instead',
+                  onPress: () => {
+                    setUseUrl(true);
+                  }
+                },
+                {
+                  text: 'Keep Current Image',
+                  style: 'cancel',
+                  onPress: () => {
+                    finalImageUrl = item.imageUri;
+                  }
+                }
+              ]
+            );
+            return;
+          }
+        } else {
+          // Same image, keep it
+          finalImageUrl = item.imageUri;
+        }
+      } else {
+        // No image
+        finalImageUrl = undefined;
+      }
+
+      const updatedItem: Item = {
+        ...item,
+        title,
+        description,
+        location,
+        date,
+        category: category || undefined,
+        imageUri: finalImageUrl,
+      };
+
+      await editItem(updatedItem);
+      Alert.alert('Success', 'Item updated successfully!', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update item. Please try again.');
+    }
   };
 
   if (!item) {
@@ -88,6 +212,18 @@ export default function EditItem() {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Item not found</Text>
+          <CustomButton title="Go Back" onPress={() => router.back()} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!isOwner(item)) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="lock-closed" size={64} color={colors.error} />
+          <Text style={styles.errorText}>You can only edit your own items</Text>
           <CustomButton title="Go Back" onPress={() => router.back()} />
         </View>
       </SafeAreaView>
@@ -104,19 +240,74 @@ export default function EditItem() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.image} contentFit="cover" />
+        <View style={styles.imageSection}>
+          <View style={styles.imageOptionTabs}>
+            <TouchableOpacity
+              onPress={() => {
+                setUseUrl(false);
+                if (item?.imageUri && !item.imageUri.startsWith('http')) {
+                  setImageUri(item.imageUri);
+                }
+              }}
+              style={[styles.tab, !useUrl && styles.tabActive]}
+            >
+              <Ionicons name="image-outline" size={20} color={!useUrl ? colors.white : colors.text} />
+              <Text style={[styles.tabText, !useUrl && styles.tabTextActive]}>From Device</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setUseUrl(true);
+                if (item?.imageUri?.startsWith('http')) {
+                  setImageUrl(item.imageUri);
+                }
+              }}
+              style={[styles.tab, useUrl && styles.tabActive]}
+            >
+              <Ionicons name="link-outline" size={20} color={useUrl ? colors.white : colors.text} />
+              <Text style={[styles.tabText, useUrl && styles.tabTextActive]}>Image URL</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!useUrl ? (
+            <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.image} contentFit="cover" />
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="camera-outline" size={48} color={colors.gray} />
+                  <Text style={styles.imagePlaceholderText}>Tap to add photo</Text>
+                </View>
+              )}
+              <View style={styles.imageOverlay}>
+                <Ionicons name="camera" size={24} color={colors.white} />
+              </View>
+            </TouchableOpacity>
           ) : (
-            <View style={styles.imagePlaceholder}>
-              <Ionicons name="camera-outline" size={48} color={colors.gray} />
-              <Text style={styles.imagePlaceholderText}>Tap to add photo</Text>
+            <View style={styles.urlInputContainer}>
+              <InputField
+                label="Image URL"
+                placeholder="https://example.com/image.jpg"
+                value={imageUrl}
+                onChangeText={setImageUrl}
+                keyboardType="url"
+                autoCapitalize="none"
+              />
+              {imageUrl && (
+                <View style={styles.urlPreview}>
+                  <Image 
+                    source={{ uri: imageUrl }} 
+                    style={styles.urlPreviewImage} 
+                    contentFit="cover"
+                    onError={() => {
+                      // Image failed to load, but that's okay
+                    }}
+                  />
+                  <Text style={styles.urlPreviewText}>Preview</Text>
+                </View>
+              )}
             </View>
           )}
-          <View style={styles.imageOverlay}>
-            <Ionicons name="camera" size={24} color={colors.white} />
-          </View>
-        </TouchableOpacity>
+        </View>
 
         <InputField
           label="Item Title *"
@@ -288,5 +479,59 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 18,
     color: colors.textLight,
     marginBottom: 20,
+  },
+  imageSection: {
+    marginBottom: 24,
+  },
+  imageOptionTabs: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    backgroundColor: colors.grayLight,
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  tabActive: {
+    backgroundColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  tabTextActive: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+  urlInputContainer: {
+    marginBottom: 0,
+  },
+  urlPreview: {
+    marginTop: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  urlPreviewImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: colors.grayLight,
+  },
+  urlPreviewText: {
+    padding: 8,
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.textLight,
+    backgroundColor: colors.grayLight,
   },
 });

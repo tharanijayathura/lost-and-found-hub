@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../constants/ThemeContext';
 import { Item } from '../constants/context/ItemContext';
+import { useAuth } from '../constants/context/AuthContext';
 
 interface ItemCardProps {
   item: Item;
@@ -13,6 +14,8 @@ interface ItemCardProps {
 
 export default function ItemCard({ item, onPress, onFavoritePress, isFavorite = false }: ItemCardProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const isOwner = user?.id === item.userId;
 
   const styles = createStyles(colors);
 
@@ -32,7 +35,15 @@ export default function ItemCard({ item, onPress, onFavoritePress, isFavorite = 
       )}
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+          <View style={styles.titleSection}>
+            <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+            {item.status === 'found' && (
+              <View style={styles.foundBadge}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.foundText}>Found</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.headerRight}>
             {item.category && (
               <View style={styles.categoryBadge}>
@@ -74,6 +85,20 @@ export default function ItemCard({ item, onPress, onFavoritePress, isFavorite = 
             <Text style={styles.date}>{item.date}</Text>
           </View>
         </View>
+
+        {item.userName && (
+          <View style={styles.userRow}>
+            <Ionicons name="person-outline" size={14} color={colors.textLight} />
+            <Text style={styles.userName}>
+              {isOwner ? 'You' : item.userName}
+            </Text>
+            {isOwner && (
+              <View style={styles.ownerBadge}>
+                <Text style={styles.ownerText}>Your Item</Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -107,17 +132,36 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  titleSection: {
+    flex: 1,
+    marginRight: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 4,
+  },
+  foundBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.success + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  foundText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.success,
+    marginLeft: 4,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   categoryBadge: {
     backgroundColor: colors.primary + '15',
@@ -147,6 +191,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    marginBottom: 8,
   },
   locationRow: {
     flexDirection: 'row',
@@ -167,5 +212,29 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
     color: colors.textLight,
     marginLeft: 4,
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  userName: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginLeft: 6,
+    flex: 1,
+  },
+  ownerBadge: {
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  ownerText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });
