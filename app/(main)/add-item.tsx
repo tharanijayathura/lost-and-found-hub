@@ -1,19 +1,19 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../config/firebase';
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
+import { storage } from '../../config/firebase';
+import { useAuth } from '../../constants/context/AuthContext';
 import { useItems } from '../../constants/context/ItemContext';
 import { useTheme } from '../../constants/ThemeContext';
-import { useAuth } from '../../constants/context/AuthContext';
-import { compressImage } from '../../utils/imageUtils';
-import { validateItemTitle, validateItemLocation, validateItemDescription } from '../../utils/validation';
 import { handleError } from '../../utils/errorHandler';
+import { compressImage } from '../../utils/imageUtils';
+import { validateItemDescription, validateItemLocation, validateItemTitle } from '../../utils/validation';
 
 const categories = ['Electronics', 'Personal Items', 'Clothing', 'Books', 'Accessories', 'Other'];
 
@@ -242,7 +242,7 @@ export default function AddItem() {
       // Add item to Firestore
       await addItem({ 
         title: title.trim(), 
-        description: description.trim() || undefined, 
+        description: description.trim(), 
         location: location.trim(), 
         date, 
         category: category || undefined, 
@@ -253,15 +253,13 @@ export default function AddItem() {
       console.log('Item added successfully!');
       setUploading(false);
 
-      Alert.alert('Success', 'Item added successfully!', [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            console.log('Navigating back...');
-            router.back();
-          }
-        }
-      ]);
+      // Navigate to home screen immediately
+      router.replace('/home');
+      
+      // Show success message after a short delay to ensure navigation happens
+      setTimeout(() => {
+        Alert.alert('Success', 'Item added successfully!');
+      }, 300);
     } catch (error: any) {
       console.error('Error adding item:', error);
       setUploading(false);

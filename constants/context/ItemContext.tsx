@@ -182,39 +182,110 @@ export const ItemProvider = ({ children }: { children: ReactNode }) => {
     }
     try {
       const { id, createdAt, userId, userName, userEmail, ...itemData } = updated;
-      await updateDoc(doc(db, 'items', id), itemData);
-    } catch (error) {
+      
+      // Filter out undefined values
+      const cleanData: any = {};
+      Object.keys(itemData).forEach(key => {
+        const value = (itemData as any)[key];
+        if (value !== undefined) {
+          cleanData[key] = value;
+        }
+      });
+      
+      console.log('Updating item in Firestore:', id, cleanData);
+      
+      await updateDoc(doc(db, 'items', id), cleanData);
+      
+      console.log('Item updated successfully:', id);
+    } catch (error: any) {
       console.error('Error updating item:', error);
-      throw error;
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Provide more specific error messages
+      if (error.code === 'permission-denied') {
+        throw new Error('Permission denied. Please check your Firestore security rules or ensure you are logged in.');
+      } else if (error.code === 'unavailable') {
+        throw new Error('Firestore is unavailable. Please check your internet connection.');
+      } else if (error.message) {
+        throw new Error(`Failed to update item: ${error.message}`);
+      } else {
+        throw new Error('Failed to update item. Please try again.');
+      }
     }
   };
 
   const deleteItem = async (id: string): Promise<void> => {
     if (!user) {
+      console.error('Delete failed: User not logged in');
       throw new Error('User must be logged in to delete items');
     }
+    
+    console.log('Delete attempt:', {
+      itemId: id,
+      userId: user.id,
+      userName: user.name
+    });
+    
     // Find the item to check ownership
     const item = items.find(i => i.id === id);
     if (!item) {
+      console.error('Delete failed: Item not found in local state');
       throw new Error('Item not found');
     }
+    
+    console.log('Item found:', {
+      itemId: item.id,
+      itemUserId: item.userId,
+      currentUserId: user.id,
+      isOwner: item.userId === user.id
+    });
+    
     if (item.userId !== user.id) {
+      console.error('Delete failed: User does not own this item');
       throw new Error('You can only delete your own items');
     }
+    
     try {
+      console.log('Deleting item from Firestore:', id);
+      
+      // Also delete any favorites for this item first
+      try {
+        const favoritesQuery = query(
+          collection(db, 'favorites'),
+          where('itemId', '==', id)
+        );
+        const snapshot = await getDocs(favoritesQuery);
+        if (snapshot.docs.length > 0) {
+          console.log(`Deleting ${snapshot.docs.length} favorite(s) for item ${id}`);
+          const deleteFavoritesPromises = snapshot.docs.map(favDoc => deleteDoc(favDoc.ref));
+          await Promise.all(deleteFavoritesPromises);
+          console.log('Favorites deleted successfully');
+        }
+      } catch (favError: any) {
+        console.warn('Error deleting favorites (continuing with item deletion):', favError);
+        // Continue with item deletion even if favorites deletion fails
+      }
+      
+      // Delete the item itself
+      console.log('Deleting item document from Firestore...');
       await deleteDoc(doc(db, 'items', id));
-      // Also delete any favorites for this item
-      const favoritesQuery = query(
-        collection(db, 'favorites'),
-        where('itemId', '==', id)
-      );
-      const snapshot = await getDocs(favoritesQuery);
-      snapshot.forEach(async (favDoc) => {
-        await deleteDoc(favDoc.ref);
-      });
-    } catch (error) {
+      console.log('Item deleted successfully from Firestore:', id);
+    } catch (error: any) {
       console.error('Error deleting item:', error);
-      throw error;
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Provide more specific error messages
+      if (error.code === 'permission-denied') {
+        throw new Error('Permission denied. Please check your Firestore security rules or ensure you are logged in.');
+      } else if (error.code === 'unavailable') {
+        throw new Error('Firestore is unavailable. Please check your internet connection.');
+      } else if (error.message) {
+        throw new Error(`Failed to delete item: ${error.message}`);
+      } else {
+        throw new Error('Failed to delete item. Please try again.');
+      }
     }
   };
 

@@ -206,16 +206,20 @@ export default function Home() {
           <FlatList
             data={filteredItems}
             keyExtractor={item => item.id}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
             renderItem={({ item }) => (
-              <ItemCard
-                item={item}
-                isFavorite={isFavorite(item.id)}
-                onPress={() => router.push({
-                  pathname: '/item-details',
-                  params: { itemId: item.id }
-                })}
-                onFavoritePress={() => toggleFavorite(item.id)}
-              />
+              <View style={styles.cardWrapper}>
+                <ItemCard
+                  item={item}
+                  isFavorite={isFavorite(item.id)}
+                  onPress={() => router.push({
+                    pathname: '/item-details',
+                    params: { itemId: item.id }
+                  })}
+                  onFavoritePress={() => toggleFavorite(item.id)}
+                />
+              </View>
             )}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -380,6 +384,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   listContent: {
     paddingBottom: 20,
+  },
+  row: {
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  cardWrapper: {
+    width: '48%',
   },
   emptyState: {
     flex: 1,

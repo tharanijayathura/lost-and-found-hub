@@ -34,6 +34,7 @@ export default function EditItem() {
   const [imageUri, setImageUri] = useState<string | undefined>(item?.imageUri);
   const [imageUrl, setImageUrl] = useState<string>(item?.imageUri?.startsWith('http') ? item.imageUri : '');
   const [useUrl, setUseUrl] = useState(item?.imageUri?.startsWith('http') || false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -110,6 +111,9 @@ export default function EditItem() {
       return;
     }
 
+    if (saving) return; // Prevent multiple submissions
+
+    setSaving(true);
     try {
       let finalImageUrl: string | undefined = undefined;
 
@@ -199,10 +203,17 @@ export default function EditItem() {
       };
 
       await editItem(updatedItem);
-      Alert.alert('Success', 'Item updated successfully!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      
+      // Navigate back immediately
+      router.back();
+      
+      // Show success message after a short delay
+      setTimeout(() => {
+        Alert.alert('Success', 'Item updated successfully!');
+      }, 300);
     } catch (error: any) {
+      console.error('Error editing item:', error);
+      setSaving(false);
       Alert.alert('Error', error.message || 'Failed to update item. Please try again.');
     }
   };
@@ -365,7 +376,8 @@ export default function EditItem() {
         <CustomButton
           title="Save Changes"
           onPress={handleEdit}
-          disabled={!title || !location}
+          disabled={!title || !location || saving}
+          loading={saving}
         />
       </ScrollView>
     </SafeAreaView>

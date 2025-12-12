@@ -108,7 +108,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: 16,
-    marginBottom: 16,
     overflow: 'hidden',
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
@@ -117,10 +116,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: colors.border,
+    width: '100%',
+    height: '100%',
   },
   image: {
     width: '100%',
-    height: 200,
+    height: 180,
     backgroundColor: colors.grayLight,
   },
   content: {

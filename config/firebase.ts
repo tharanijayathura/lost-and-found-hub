@@ -1,8 +1,10 @@
 // Firebase Configuration
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { Platform } from 'react-native';
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -19,9 +21,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Auth
-// Note: getAuth() automatically uses persistence in React Native/Expo
-// The warning about AsyncStorage is just informational - auth will still persist
-export const auth = getAuth(app);
+// Use AsyncStorage persistence on native to avoid runtime warnings
+export const auth = Platform.OS === 'web'
+  ? getAuth(app)
+  : initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
 
 // Initialize Firebase services
 export const db = getFirestore(app);

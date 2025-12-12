@@ -1,10 +1,22 @@
-import { View, FlatList, Text } from 'react-native';
+import { FlatList, View } from 'react-native';
 import ItemCard from '../../components/ItemCard';
 
 export default function Home() {
   const data = [
-    { id: '1', title: 'Lost iPhone', location: 'Library', date: '2025-11-23' },
-    { id: '2', title: 'Lost Laptop', location: 'Cafeteria', date: '2025-11-22' },
+    {
+      id: '1',
+      title: 'Lost iPhone',
+      description: 'Silver iPhone 14 with a cracked screen protector and blue case.',
+      location: 'Library',
+      date: '2025-11-23',
+    },
+    {
+      id: '2',
+      title: 'Lost Laptop',
+      description: '13-inch MacBook Air in a gray sleeve, last seen near the café seating.',
+      location: 'Cafeteria',
+      date: '2025-11-22',
+    },
   ];
 
   return (

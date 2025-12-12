@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,16 +17,30 @@ export default function ItemDetails() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const itemId = params.itemId as string;
+  const [deleting, setDeleting] = useState(false);
   
   const item = items.find(i => i.id === itemId);
   const styles = createStyles(colors);
   const isItemOwner = item ? isOwner(item) : false;
 
   const handleDelete = async () => {
-    if (!item) return;
+    if (!item) {
+      console.error('Cannot delete: item is null');
+      return;
+    }
+    
+    if (deleting) {
+      console.log('Delete already in progress, ignoring...');
+      return;
+    }
     
     if (!isItemOwner) {
       Alert.alert('Permission Denied', 'You can only delete your own items.');
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to delete items.');
       return;
     }
 
@@ -38,11 +53,56 @@ export default function ItemDetails() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            setDeleting(true);
             try {
+              console.log('=== DELETE STARTED ===');
+              console.log('Item ID:', item.id);
+              console.log('User ID:', user.id);
+              console.log('Item User ID:', item.userId);
+              console.log('Is Owner:', isItemOwner);
+              
               await deleteItem(item.id);
+              
+              console.log('=== DELETE SUCCESS ===');
+              console.log('Item deleted from Firestore, navigating back...');
+              
+              // Wait a moment for Firestore to sync
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Navigate back
               router.back();
+              
+              // Show success message
+              setTimeout(() => {
+                Alert.alert('Success', 'Item deleted successfully!');
+              }, 500);
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete item');
+              console.error('=== DELETE ERROR ===');
+              console.error('Error:', error);
+              console.error('Error details:', {
+                code: error.code,
+                message: error.message,
+                itemId: item.id,
+                userId: user?.id,
+                itemUserId: item.userId,
+                stack: error.stack
+              });
+              
+              setDeleting(false);
+              
+              // Show more detailed error message
+              let errorMessage = 'Failed to delete item. ';
+              if (error.code === 'permission-denied') {
+                errorMessage += 'Permission denied. Please check your Firestore security rules or ensure you are logged in.';
+              } else if (error.code === 'unavailable') {
+                errorMessage += 'Firestore is unavailable. Please check your internet connection.';
+              } else if (error.message) {
+                errorMessage += error.message;
+              } else {
+                errorMessage += 'Please try again.';
+              }
+              
+              Alert.alert('Error', errorMessage);
             }
           },
         },
@@ -237,9 +297,11 @@ export default function ItemDetails() {
                   variant="outline"
                 />
                 <CustomButton
-                  title="Delete Item"
+                  title={deleting ? "Deleting..." : "Delete Item"}
                   onPress={handleDelete}
                   variant="danger"
+                  disabled={deleting}
+                  loading={deleting}
                 />
               </>
             ) : (

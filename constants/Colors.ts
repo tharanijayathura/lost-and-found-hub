@@ -3,6 +3,7 @@ export const lightColors = {
   primaryDark: '#4f46e5',
   secondary: '#8b5cf6',
   accent: '#ec4899',
+  tint: '#6366f1',
   background: '#f8fafc',
   surface: '#ffffff',
   text: '#1e293b',
@@ -25,6 +26,7 @@ export const darkColors = {
   primaryDark: '#6366f1',
   secondary: '#a78bfa',
   accent: '#f472b6',
+  tint: '#818cf8',
   background: '#0f172a',
   surface: '#1e293b',
   text: '#f1f5f9',
@@ -44,4 +46,10 @@ export const darkColors = {
 
 export type ColorScheme = typeof lightColors;
 
-export default lightColors;
+export const Colors = {
+  light: lightColors,
+  dark: darkColors,
+  ...lightColors,
+} as const;
+
+export default Colors;

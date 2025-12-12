@@ -1,4 +1,4 @@
-import { TextInput, View, Text, StyleSheet } from 'react-native';
+import { KeyboardTypeOptions, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '../constants/ThemeContext';
 
 interface InputFieldProps {
@@ -9,7 +9,7 @@ interface InputFieldProps {
   label?: string;
   multiline?: boolean;
   numberOfLines?: number;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  keyboardType?: KeyboardTypeOptions;
   editable?: boolean;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }
