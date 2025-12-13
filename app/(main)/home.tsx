@@ -1,11 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, TextInput, RefreshControl } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, FlatList, RefreshControl, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ItemCard from '../../components/ItemCard';
-import { useItems } from '../../constants/context/ItemContext';
 import { useAuth } from '../../constants/context/AuthContext';
+import { useItems } from '../../constants/context/ItemContext';
 import { useTheme } from '../../constants/ThemeContext';
 
 export default function Home() {
@@ -208,6 +208,7 @@ export default function Home() {
             keyExtractor={item => item.id}
             numColumns={2}
             columnWrapperStyle={styles.row}
+            style={styles.list}
             renderItem={({ item }) => (
               <View style={styles.cardWrapper}>
                 <ItemCard
@@ -385,12 +386,16 @@ const createStyles = (colors: any) => StyleSheet.create({
   listContent: {
     paddingBottom: 20,
   },
+  list: {
+    flexGrow: 1,
+  },
   row: {
     justifyContent: 'space-between',
     marginBottom: 16,
   },
   cardWrapper: {
-    width: '48%',
+    flex: 1,
+    maxWidth: '48%',
   },
   emptyState: {
     flex: 1,

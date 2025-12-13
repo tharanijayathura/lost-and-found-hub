@@ -1,9 +1,9 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../constants/ThemeContext';
-import { Item } from '../constants/context/ItemContext';
 import { useAuth } from '../constants/context/AuthContext';
+import { Item } from '../constants/context/ItemContext';
 
 interface ItemCardProps {
   item: Item;
@@ -117,15 +117,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     width: '100%',
-    height: '100%',
   },
   image: {
     width: '100%',
-    height: 180,
+    height: 130,
     backgroundColor: colors.grayLight,
   },
   content: {
-    padding: 16,
+    padding: 12,
   },
   header: {
     flexDirection: 'row',
@@ -138,7 +137,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginRight: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 4,
@@ -180,19 +179,19 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: 4,
   },
   description: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textLight,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   locationRow: {
     flexDirection: 'row',

@@ -27,6 +27,7 @@ export interface Item {
   userId?: string;
   userName?: string;
   userEmail?: string;
+  userProfileImage?: string;
   status?: 'pending' | 'found';
   createdAt?: any;
 }
@@ -66,15 +67,17 @@ export const ItemProvider = ({ children }: { children: ReactNode }) => {
         const data = docSnapshot.data();
         let userName = data.userName;
         let userEmail = data.userEmail;
+        let userProfileImage = data.userProfileImage;
         
         // If user info not in item, fetch from users collection
-        if (!userName && data.userId) {
+        if ((!userName || !userEmail || !userProfileImage) && data.userId) {
           try {
             const userDoc = await getDoc(doc(db, 'users', data.userId));
             if (userDoc.exists()) {
               const userData = userDoc.data();
-              userName = userData.name;
-              userEmail = userData.email;
+              userName = userName || userData.name;
+              userEmail = userEmail || userData.email;
+              userProfileImage = userProfileImage || userData.profileImageUri;
             }
           } catch (error) {
             console.error('Error fetching user info:', error);
@@ -87,6 +90,7 @@ export const ItemProvider = ({ children }: { children: ReactNode }) => {
           date: data.date || '',
           userName: userName || undefined,
           userEmail: userEmail || undefined,
+          userProfileImage: userProfileImage || undefined,
           status: data.status || 'pending',
           createdAt: data.createdAt,
         } as Item);

@@ -34,6 +34,19 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f08f7a7d-484f-4b6d-9e60-8d83cab75865"
+      }
+    },
+    "owner": "tharani_jayathura",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f08f7a7d-484f-4b6d-9e60-8d83cab75865"
     }
   }
 }
